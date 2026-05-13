@@ -126,6 +126,82 @@ public class EditModelTests : BasePageModelTests
 	}
 
 	[TestMethod]
+	public async Task OnGet_CanEditOthersPost_LockedTopicWithPermission_ReturnsPage()
+	{
+		var user = _db.AddUserWithRole("TestUser").Entity;
+		var otherUser = _db.AddUser("OtherUser").Entity;
+		var topic = _db.AddTopic(user).Entity;
+		topic.IsLocked = true;
+		var post = _db.CreatePostForTopic(topic, otherUser).Entity;
+		await _db.SaveChangesAsync();
+
+		AddAuthenticatedUser(_model, user, [PermissionTo.CreateForumPosts, PermissionTo.EditUsersForumPosts]);
+		_model.Id = post.Id;
+		_userManager.GetRequiredUser(Arg.Any<ClaimsPrincipal>()).Returns(user);
+
+		var result = await _model.OnGet();
+
+		Assert.IsInstanceOfType(result, typeof(PageResult));
+		Assert.AreEqual(otherUser.Id, _model.Post.PosterId);
+		Assert.AreEqual(otherUser.UserName, _model.Post.PosterName);
+	}
+
+	[TestMethod]
+	public async Task OnGet_CannotEditOthersPost_LockedTopicWithoutPermission_ReturnsAccessDenied()
+	{
+		var user = _db.AddUserWithRole("TestUser").Entity;
+		var otherUser = _db.AddUser("OtherUser").Entity;
+		var topic = _db.AddTopic(user).Entity;
+		topic.IsLocked = true;
+		var post = _db.CreatePostForTopic(topic, otherUser).Entity;
+		await _db.SaveChangesAsync();
+
+		AddAuthenticatedUser(_model, user, [PermissionTo.CreateForumPosts, PermissionTo.EditForumPosts]);
+		_model.Id = post.Id;
+
+		var result = await _model.OnGet();
+
+		AssertAccessDenied(result);
+	}
+
+	[TestMethod]
+	public async Task OnGet_CanEditOwnPost_LockedTopicWithPermission_ReturnsPage()
+	{
+		var user = _db.AddUserWithRole("TestUser").Entity;
+		var topic = _db.AddTopic(user).Entity;
+		topic.IsLocked = true;
+		var post = _db.CreatePostForTopic(topic, user).Entity;
+		await _db.SaveChangesAsync();
+
+		AddAuthenticatedUser(_model, user, [PermissionTo.CreateForumPosts, PermissionTo.EditUsersForumPosts]);
+		_model.Id = post.Id;
+		_userManager.GetRequiredUser(Arg.Any<ClaimsPrincipal>()).Returns(user);
+
+		var result = await _model.OnGet();
+
+		Assert.IsInstanceOfType(result, typeof(PageResult));
+		Assert.AreEqual(user.Id, _model.Post.PosterId);
+		Assert.AreEqual(user.UserName, _model.Post.PosterName);
+	}
+
+	[TestMethod]
+	public async Task OnGet_CannotEditOwnPost_LockedTopicWithoutPermission_ReturnsAccessDenied()
+	{
+		var user = _db.AddUserWithRole("TestUser").Entity;
+		var topic = _db.AddTopic(user).Entity;
+		topic.IsLocked = true;
+		var post = _db.CreatePostForTopic(topic, user).Entity;
+		await _db.SaveChangesAsync();
+
+		AddAuthenticatedUser(_model, user, [PermissionTo.CreateForumPosts, PermissionTo.EditForumPosts]);
+		_model.Id = post.Id;
+
+		var result = await _model.OnGet();
+
+		AssertAccessDenied(result);
+	}
+
+	[TestMethod]
 	public async Task OnGet_FirstPost_SetsIsFirstPostTrue()
 	{
 		var user = _db.AddUserWithRole("TestUser").Entity;
