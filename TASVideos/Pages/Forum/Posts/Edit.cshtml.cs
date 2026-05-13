@@ -42,6 +42,7 @@ public class EditModel(
 				EnableBbCode = p.EnableBbCode,
 				EnableHtml = p.EnableHtml,
 				TopicId = p.TopicId ?? 0,
+				TopicIsLocked = p.Topic!.IsLocked,
 				TopicTitle = p.Topic!.Title,
 				Subject = p.Subject,
 				Text = p.Text,
@@ -54,7 +55,7 @@ public class EditModel(
 			return NotFound();
 		}
 
-		if (!CanEditPost(post.PosterId))
+		if (!CanEditPost(post.PosterId, post.TopicIsLocked))
 		{
 			return AccessDenied();
 		}
@@ -117,7 +118,7 @@ public class EditModel(
 			return NotFound();
 		}
 
-		if (!CanEditPost(forumPost.PosterId))
+		if (!CanEditPost(forumPost.PosterId, forumPost.Topic!.IsLocked))
 		{
 			ModelState.AddModelError("", "Unable to edit post.");
 			return Page();
@@ -283,8 +284,8 @@ public class EditModel(
 			: BasePageRedirect("/Forum/Topics/Index", new { id = post.TopicId });
 	}
 
-	private bool CanEditPost(int posterId) => User.Has(PermissionTo.EditUsersForumPosts)
-		|| (User.Has(PermissionTo.EditForumPosts) && posterId == User.GetUserId());
+	private bool CanEditPost(int posterId, bool isLocked) => User.Has(PermissionTo.EditUsersForumPosts)
+		|| (User.Has(PermissionTo.EditForumPosts) && posterId == User.GetUserId() && !isLocked);
 
 	public class ForumPostEditModel
 	{
@@ -294,6 +295,7 @@ public class EditModel(
 		public bool EnableBbCode { get; init; }
 		public bool EnableHtml { get; init; }
 		public int TopicId { get; init; }
+		public bool TopicIsLocked { get; init; }
 
 		[StringLength(500)]
 		public string TopicTitle { get; init; } = "";
